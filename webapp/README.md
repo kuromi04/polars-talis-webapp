@@ -139,5 +139,5 @@ graph TD
 
 Para iniciar tu Mini App en Telegram:
 1. Chatea con **`@BotFather`** en Telegram y usa el comando `/newapp`.
-2. Asigna la URL del despliegue HTTPS: `https://kuromi04.github.io/polars-talis-webapp/`
+2. Asigna la URL del despliegue HTTPS: `https://kuromi04.github.io/polars-talis/`
 3. Copia el enlace corto generado (ej. `t.me/tu_bot/dashboard`) y ábrelo desde tu smartphone para interactuar con tus gráficos en tiempo real.
