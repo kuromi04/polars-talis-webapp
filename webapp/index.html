@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polars-Talis Dashboard - Telegram Mini App</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <span class="logo-dot"></span>
+                <h1 id="app-title">Polars-Talis Live</h1>
+            </div>
+            <div class="status-badge" id="connection-status">
+                <span class="pulse-indicator"></span>
+                Conectado
+            </div>
+        </header>
+
+        <!-- Connection Warning Banner -->
+        <div id="offline-warning" class="warning-banner hidden">
+            ⚠️ Usando datos simulados (Error de conexión con Binance API)
+        </div>
+
+        <!-- Market Overview Card -->
+        <section class="card glass-card hero-card" id="market-overview-section">
+            <div class="asset-selector-row">
+                <select id="asset-select" class="styled-select">
+                    <option value="BTCUSDT">BTC / USDT</option>
+                    <option value="ETHUSDT">ETH / USDT</option>
+                    <option value="SOLUSDT">SOL / USDT</option>
+                    <option value="BNBUSDT">BNB / USDT</option>
+                    <option value="CUSTOM">Otro par...</option>
+                </select>
+                <div id="custom-symbol-wrapper" class="custom-input-group hidden">
+                    <input type="text" id="custom-symbol-input" placeholder="ej. ADAUSDT" class="styled-input">
+                    <button id="btn-search-symbol" class="btn-icon">🔍</button>
+                </div>
+            </div>
+
+            <div class="hero-header">
+                <div>
+                    <h2 class="price-value" id="current-price">$0.00</h2>
+                </div>
+                <div class="change-badge positive" id="price-change-percent">
+                    0.00%
+                </div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">RSI (14)</span>
+                    <span class="stat-value text-warning" id="rsi-value">62.45</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Volatilidad (BB)</span>
+                    <span class="stat-value text-primary" id="volatility-status">Moderada</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Tendencia</span>
+                    <span class="stat-value text-success" id="trend-status">Alcista</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chart Section -->
+        <section class="card glass-card chart-card" id="chart-section">
+            <div class="card-header">
+                <h3>Gráfico de Tendencias</h3>
+                <div class="chart-controls">
+                    <button class="btn-time active" id="btn-1d">1D</button>
+                    <button class="btn-time" id="btn-1w">1W</button>
+                    <button class="btn-time" id="btn-1m">1M</button>
+                </div>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </section>
+
+        <!-- RSI Chart Section -->
+        <section class="card glass-card chart-card" id="rsi-chart-section">
+            <div class="card-header">
+                <h3>Índice de Fuerza Relativa (RSI)</h3>
+                <span class="rsi-badge-indicator" id="rsi-status-badge">RSI: 0.00</span>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="rsiChart"></canvas>
+            </div>
+        </section>
+
+        <!-- MACD Chart Section -->
+        <section class="card glass-card chart-card" id="macd-chart-section">
+            <div class="card-header">
+                <h3>MACD (12, 26, 9)</h3>
+                <span class="rsi-badge-indicator" id="macd-status-badge" style="color: var(--color-primary); background: rgba(56, 151, 240, 0.08); border-color: rgba(56, 151, 240, 0.2);">Hist: 0.00</span>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="macdChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Configuration Panel -->
+        <section class="card glass-card config-card" id="settings-section">
+            <h3>Ajustes de Indicadores</h3>
+            <p class="text-secondary card-subtitle">Cambia los parámetros dinámicamente. Polars-Talis los calculará al instante.</p>
+            
+            <div class="config-inputs">
+                <div class="input-group">
+                    <label for="sma-period-input">Período SMA</label>
+                    <div class="slider-container">
+                        <input type="range" id="sma-period-input" min="5" max="100" value="20" class="styled-slider">
+                        <span class="slider-badge" id="sma-badge-val">20</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="rsi-period-input">Período RSI</label>
+                    <div class="slider-container">
+                        <input type="range" id="rsi-period-input" min="5" max="50" value="14" class="styled-slider">
+                        <span class="slider-badge" id="rsi-badge-val">14</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="bb-period-input">Período Bandas de Bollinger</label>
+                    <div class="slider-container">
+                        <input type="range" id="bb-period-input" min="10" max="50" value="20" class="styled-slider">
+                        <span class="slider-badge" id="bb-badge-val">20</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="ema-period-input">Período EMA</label>
+                    <div class="slider-container">
+                        <input type="range" id="ema-period-input" min="5" max="100" value="12" class="styled-slider">
+                        <span class="slider-badge" id="ema-badge-val">12</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="macd-fast-input">MACD Rápido (EMA Fast)</label>
+                    <div class="slider-container">
+                        <input type="range" id="macd-fast-input" min="5" max="30" value="12" class="styled-slider">
+                        <span class="slider-badge" id="macd-fast-badge-val">12</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="macd-slow-input">MACD Lento (EMA Slow)</label>
+                    <div class="slider-container">
+                        <input type="range" id="macd-slow-input" min="20" max="60" value="26" class="styled-slider">
+                        <span class="slider-badge" id="macd-slow-badge-val">26</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="btn-calculate">Recalcular Indicadores</button>
+        </section>
+
+        <!-- Tech Stack Card -->
+        <section class="card glass-card tech-card" id="tech-stack-section">
+            <h3>Tecnologías y Datos</h3>
+            <div class="tech-grid">
+                <div class="tech-item pt">
+                    <div class="tech-icon-wrapper pt-icon">🦀</div>
+                    <span class="tech-name">Polars (Rust)</span>
+                </div>
+                <div class="tech-item chart">
+                    <div class="tech-icon-wrapper chart-icon">📊</div>
+                    <span class="tech-name">Chart.js</span>
+                </div>
+                <div class="tech-item tg">
+                    <div class="tech-icon-wrapper tg-icon">🤖</div>
+                    <span class="tech-name">Telegram SDK</span>
+                </div>
+                <div class="tech-item binance">
+                    <div class="tech-icon-wrapper binance-icon">🟡</div>
+                    <span class="tech-name">Binance API</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Telegram Action Button -->
+        <footer class="app-footer">
+            <button class="btn-secondary" id="btn-send-alert">Compartir Alerta en el Chat</button>
+        </footer>
+
+        <!-- Copyright Footer -->
+        <footer class="app-footer-copyright">
+            <p>© 2026 Polars-Talis. Todos los derechos reservados.</p>
+            <p class="credit-text">Desarrollado con ❤️ en Termux por <b>kuromi04</b></p>
+        </footer>
+    </div>
+
+    <!-- Custom Logic Script -->
+    <script src="app.js"></script>
+</body>
+</html>
