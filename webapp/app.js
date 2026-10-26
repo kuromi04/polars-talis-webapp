@@ -27,12 +27,13 @@ function generateSimulatedData(points = 100) {
 }
 
 let currentSymbol = "BTCUSDT";
+let currentInterval = "5m";
 
 // --- Obtener datos reales de Binance API (Soporte Spot + Futuros) ---
-async function fetchBinanceData(symbol = currentSymbol) {
+async function fetchBinanceData(symbol = currentSymbol, interval = currentInterval) {
     try {
         // 1. Intentar con Binance Spot
-        const spotUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=5m&limit=100`;
+        const spotUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=100`;
         const response = await fetch(spotUrl);
         if (response.ok) {
             const klines = await response.json();
@@ -41,7 +42,7 @@ async function fetchBinanceData(symbol = currentSymbol) {
         
         // 2. Si falla Spot, intentar con Binance Futures (Perpetuos)
         console.log(`ℹ️ Símbolo ${symbol} no encontrado en Spot. Buscando en Binance Futuros...`);
-        const futuresUrl = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=5m&limit=100`;
+        const futuresUrl = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=100`;
         const futuresResponse = await fetch(futuresUrl);
         if (futuresResponse.ok) {
             const klines = await futuresResponse.json();
@@ -50,7 +51,7 @@ async function fetchBinanceData(symbol = currentSymbol) {
         
         throw new Error(`Symbol ${symbol} not found on Spot or Futures API.`);
     } catch (e) {
-        console.warn(`⚠️ No se pudo obtener datos de Binance para ${symbol}:`, e);
+        console.warn(`⚠️ No se pudo obtener datos de Binance para ${symbol} (${interval}):`, e);
         return null;
     }
 }
@@ -590,7 +591,7 @@ function showOfflineWarning(show) {
 }
 
 async function startApp() {
-    originalDataset = await fetchBinanceData(currentSymbol);
+    originalDataset = await fetchBinanceData(currentSymbol, currentInterval);
     if (!originalDataset || originalDataset.length === 0) {
         originalDataset = generateSimulatedData(100);
         showOfflineWarning(true);
@@ -605,7 +606,7 @@ function startUpdateInterval() {
     if (updateIntervalId) clearInterval(updateIntervalId);
     
     updateIntervalId = setInterval(async () => {
-        const freshData = await fetchBinanceData(currentSymbol);
+        const freshData = await fetchBinanceData(currentSymbol, currentInterval);
         if (freshData && freshData.length > 0) {
             originalDataset = freshData;
             showOfflineWarning(false);
@@ -622,7 +623,7 @@ async function changeAsset(symbol) {
     
     currentPriceEl.textContent = "Cargando...";
     
-    const freshData = await fetchBinanceData(symbol);
+    const freshData = await fetchBinanceData(symbol, currentInterval);
     if (freshData && freshData.length > 0) {
         currentSymbol = symbol;
         originalDataset = freshData;
@@ -671,18 +672,28 @@ btnSendAlert.addEventListener('click', () => {
     }
 });
 
-// Cambiar temporalidad (Simulado recreando consulta)
-document.getElementById('btn-1d').addEventListener('click', async (e) => {
-    document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active'));
-    e.target.classList.add('active');
-    const freshData = await fetchBinanceData(currentSymbol);
-    if (freshData && freshData.length > 0) {
-        originalDataset = freshData;
-        showOfflineWarning(false);
-    } else {
-        showOfflineWarning(true);
-    }
-    updateUI();
+// Cambiar temporalidad (TF: 3m, 5m, 15m, 1h, 1d)
+document.querySelectorAll('.btn-time').forEach(button => {
+    button.addEventListener('click', async (e) => {
+        const interval = e.currentTarget.dataset.interval;
+        if (!interval || interval === currentInterval) return;
+
+        document.querySelectorAll('.btn-time').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        
+        currentInterval = interval;
+        currentPriceEl.textContent = "Cargando...";
+
+        const freshData = await fetchBinanceData(currentSymbol, currentInterval);
+        if (freshData && freshData.length > 0) {
+            originalDataset = freshData;
+            showOfflineWarning(false);
+        } else {
+            showOfflineWarning(true);
+        }
+        updateUI();
+        startUpdateInterval();
+    });
 });
 
 // Listeners de Selección de Activos
